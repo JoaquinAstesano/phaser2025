@@ -79,10 +79,51 @@ export default class Game extends Phaser.Scene {
 
     this.score = 0;
     this.gameOver = false;
+    this.victory = false;
 
     this.scoreText = this.add.text(16, 16, `Score: ${this.score}`, {
       fontSize: "32px",
       fill: "#000",
+    });
+
+    this.rKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
+
+    this.gameOverText = this.add
+      .text(400, 300, "GAME OVER", {
+        fontSize: "64px",
+        fill: "#f00",
+        fontStyle: "bold",
+        align: "center",
+        stroke: "#000",
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5);
+    this.gameOverText.setVisible(false);
+
+    this.victoryText = this.add
+      .text(400, 300, "VICTORY", {
+        fontSize: "64px",
+        fill: "#0a0",
+        fontStyle: "bold",
+        align: "center",
+        stroke: "#000",
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5);
+    this.victoryText.setVisible(false);
+
+    this.timeLeft = 30;
+    this.timerText = this.add.text(784, 16, `Time: ${this.timeLeft}`, {
+      fontSize: "32px",
+      fill: "#000",
+      align: "right",
+    }).setOrigin(1, 0);
+
+    this.timerEvent = this.time.addEvent({
+      delay: 1000,
+      callback: this.onSecond,
+      callbackScope: this,
+      loop: true,
     });
 
     this.physics.add.collider(this.player, this.platforms);
@@ -107,6 +148,20 @@ export default class Game extends Phaser.Scene {
   }
 
   update() {
+    if (this.gameOver) {
+      this.gameOverText.setVisible(true);
+      if (Phaser.Input.Keyboard.JustDown(this.rKey)) {
+        this.scene.restart();
+      }
+      return;
+    }
+    if (this.victory) {
+      this.victoryText.setVisible(true);
+      if (Phaser.Input.Keyboard.JustDown(this.rKey)) {
+        this.scene.restart();
+      }
+      return;
+    }
     // update game objects
     if (this.cursors.left.isDown) {
       this.player.setVelocityX(-160);
@@ -125,6 +180,8 @@ export default class Game extends Phaser.Scene {
     if (this.cursors.up.isDown && this.player.body.touching.down) {
       this.player.setVelocityY(-330);
     }
+
+    this.timerText.setText(`Time: ${this.timeLeft}`);
   }
 
   collectStar(player, star) {
@@ -132,6 +189,15 @@ export default class Game extends Phaser.Scene {
 
     this.score += 10;
     this.scoreText.setText(`Score: ${this.score}`);
+
+    if (this.score >= 200 && !this.victory) {
+      this.victory = true;
+      this.physics.pause();
+      this.player.anims.play("turn");
+      this.victoryText.setVisible(true);
+      this.timerEvent.remove(false);
+      return;
+    }
 
     if (this.stars.countActive(true) === 0) {
       //  A new batch of stars to collect
@@ -152,13 +218,22 @@ export default class Game extends Phaser.Scene {
     }
   }
 
+  onSecond() {
+    if (!this.gameOver) {
+      this.timeLeft--;
+      if (this.timeLeft <= 0) {
+        this.timeLeft = 0;
+        this.hitBomb();
+      }
+    }
+  }
+
   hitBomb(player, bomb) {
     this.physics.pause();
-
     this.player.setTint(0xff0000);
-
     this.player.anims.play("turn");
-
     this.gameOver = true;
+    this.gameOverText.setVisible(true);
+    this.timerEvent.remove(false);
   }
 }
